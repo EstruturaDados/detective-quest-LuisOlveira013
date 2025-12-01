@@ -1,108 +1,232 @@
-# Desafio Detective Quest - Estruturas de Dados e Investigação
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-Bem-vindo ao desafio **Detective Quest**! Neste jogo de mistério, o jogador explora uma mansão, encontra pistas e relaciona evidências a suspeitos. Para tornar isso possível, você atuará como programador responsável por implementar toda a lógica de estruturas de dados do jogo.
+#define TAM_FILA 5
+#define TAM_PILHA 3
 
-A **Enigma Studios**, especializada em jogos educacionais, contratou você para criar a base de funcionamento da mansão e das investigações usando **árvore binária**, **árvore de busca** e **tabela hash**.
+// --------------------------------------
+// ESTRUTURA DA PEÇA
+// --------------------------------------
+typedef struct {
+    char nome; // 'I', 'O', 'T', 'L'
+    int id;    // ordem de criação
+} Peca;
 
-O desafio está dividido em três níveis: **Novato**, **Aventureiro** e **Mestre**, com cada nível adicionando mais complexidade ao anterior.  
-**Você deve escolher qual desafio deseja realizar.**
+// --------------------------------------
+// VARIÁVEIS GLOBAIS
+// --------------------------------------
+int proximoID = 0; // controla IDs únicos
 
-🚨 **Atenção:** O nível Novato foca apenas na árvore binária de navegação de cômodos. Ideal para começar com estruturas básicas.
+// --------------------------------------
+// GERA PEÇA AUTOMATICAMENTE
+// --------------------------------------
+Peca gerarPeca() {
+    char tipos[] = {'I', 'O', 'T', 'L'};
+    int indice = rand() % 4;
 
----
+    Peca p;
+    p.nome = tipos[indice];
+    p.id = proximoID++;
 
-## 🎮 Nível Novato: Mapa da Mansão com Árvore Binária
+    return p;
+}
 
-No nível Novato, você criará a árvore binária que representa o **mapa da mansão**. Cada sala é um nó, e o jogador poderá explorar os caminhos à esquerda ou à direita, começando pelo "Hall de Entrada".
+// --------------------------------------
+// FILA CIRCULAR
+// --------------------------------------
+typedef struct {
+    Peca itens[TAM_FILA];
+    int frente;
+    int tras;
+    int quantidade;
+} Fila;
 
-🚩 **Objetivo:** Criar um programa em C que:
+void inicializarFila(Fila *f) {
+    f->frente = 0;
+    f->tras = -1;
+    f->quantidade = 0;
 
-- Construa dinamicamente uma árvore binária representando os cômodos.
-- Permita que o jogador explore a mansão interativamente (esquerda, direita).
-- Exiba o nome de cada cômodo visitado até alcançar um nó-folha (fim do caminho).
+    for (int i = 0; i < TAM_FILA; i++) {
+        f->tras = (f->tras + 1) % TAM_FILA;
+        f->itens[f->tras] = gerarPeca();
+        f->quantidade++;
+    }
+}
 
-⚙️ **Funcionalidades do Sistema:**
+int filaVazia(Fila *f) {
+    return f->quantidade == 0;
+}
 
-- A árvore é criada automaticamente via `main()` com `criarSala()`.
-- O jogador interage com o jogo usando `explorarSalas()`, escolhendo entre:
-  - `e` → ir para a esquerda
-  - `d` → ir para a direita
-  - `s` → sair da exploração
+int filaCheia(Fila *f) {
+    return f->quantidade == TAM_FILA;
+}
 
-📥 **Entrada** e 📤 **Saída de Dados:**
+Peca removerFila(Fila *f) {
+    Peca removido = f->itens[f->frente];
+    f->frente = (f->frente + 1) % TAM_FILA;
+    f->quantidade--;
+    return removido;
+}
 
-*   O usuário navega pela mansão com base nas opções exibidas no terminal.
-*   O programa mostra o nome da sala visitada a cada passo.
+void inserirFila(Fila *f, Peca p) {
+    if (filaCheia(f)) return;
+    f->tras = (f->tras + 1) % TAM_FILA;
+    f->itens[f->tras] = p;
+    f->quantidade++;
+}
 
-**Simplificações para o Nível Novato:**
+// --------------------------------------
+// PILHA
+// --------------------------------------
+typedef struct {
+    Peca itens[TAM_PILHA];
+    int topo;
+} Pilha;
 
-*   Apenas árvore binária (sem inserção ou remoção durante o jogo).
-*   A árvore é montada estaticamente via código.
-*   Estrutura imutável em tempo de execução.
+void inicializarPilha(Pilha *p) {
+    p->topo = -1;
+}
 
----
+int pilhaVazia(Pilha *p) {
+    return p->topo == -1;
+}
 
-## 🛡️ Nível Aventureiro: Organização de Pistas com Árvore de Busca
+int pilhaCheia(Pilha *p) {
+    return p->topo == TAM_PILHA - 1;
+}
 
-No nível Aventureiro, você expandirá o jogo incluindo uma **árvore de busca (BST)** para armazenar pistas encontradas.
+void push(Pilha *p, Peca x) {
+    if (pilhaCheia(p)) return;
+    p->itens[++p->topo] = x;
+}
 
-🆕 **Diferença em relação ao Nível Novato:**
+Peca pop(Pilha *p) {
+    return p->itens[p->topo--];
+}
 
-*   Agora, ao visitar certos cômodos, o jogador encontrará pistas.
-*   Essas pistas são armazenadas ordenadamente em uma BST.
+// --------------------------------------
+// EXIBIR ESTADO ATUAL
+// --------------------------------------
+void exibirEstado(Fila *f, Pilha *p) {
+    printf("\n=====================================\n");
+    printf("ESTADO ATUAL:\n");
+    printf("Fila de peças: ");
 
-⚙️ **Funcionalidades do Sistema:**
+    int index = f->frente;
+    for (int i = 0; i < f->quantidade; i++) {
+        Peca pc = f->itens[index];
+        printf("[%c %d] ", pc.nome, pc.id);
+        index = (index + 1) % TAM_FILA;
+    }
 
-*   Implementar inserção e busca de strings (pistas) na árvore de busca.
-*   Permitir que o jogador visualize todas as pistas em ordem alfabética.
-*   Adicionar novas pistas automaticamente ao visitar salas específicas.
+    printf("\nPilha de reserva (topo → base): ");
+    for (int i = p->topo; i >= 0; i--) {
+        printf("[%c %d] ", p->itens[i].nome, p->itens[i].id);
+    }
 
-📥 **Entrada** e 📤 **Saída de Dados:**
+    printf("\n=====================================\n");
+}
 
-*   As pistas são cadastradas via `inserir()` ao serem encontradas.
-*   O programa pode listar todas as pistas com `emOrdem()`.
+// --------------------------------------
+// TROCA DE TRÊS PEÇAS ENTRE FILA E PILHA
+// --------------------------------------
+void trocaTres(Fila *f, Pilha *p) {
+    if (p->topo < 2 || f->quantidade < 3) {
+        printf("Não foi possível realizar a troca múltipla.\n");
+        return;
+    }
 
-**Simplificações para o Nível Intermediário:**
+    // remover 3 da fila
+    Peca f1 = removerFila(f);
+    Peca f2 = removerFila(f);
+    Peca f3 = removerFila(f);
 
-*   Nenhuma remoção é necessária.
-*   Não é necessário balancear a árvore.
-*   As pistas são strings simples (nomes curtos).
+    // remover 3 da pilha
+    Peca p1 = pop(p);
+    Peca p2 = pop(p);
+    Peca p3 = pop(p);
 
----
+    // trocar
+    push(p, f1);
+    push(p, f2);
+    push(p, f3);
 
-## 🏆 Nível Mestre: Suspeitos e Solução com Tabela Hash
+    inserirFila(f, p1);
+    inserirFila(f, p2);
+    inserirFila(f, p3);
 
-No nível Mestre, você implementará a **tabela hash** para vincular pistas a **suspeitos**. Agora o jogador pode consultar quem está associado a cada pista e deduzir o culpado com base nas evidências coletadas.
+    printf("Troca de três peças realizada.\n");
+}
 
-🆕 **Diferença em relação ao Nível Aventureiro:**
+// --------------------------------------
+// MENU PRINCIPAL
+// --------------------------------------
+int main() {
+    srand(time(NULL));
 
-*   Cada pista armazenada na BST será relacionada a um suspeito via tabela hash.
-*   Ao final, o jogador poderá ver qual suspeito está mais associado às pistas e decidir quem é o culpado.
+    Fila fila;
+    Pilha pilha;
+    inicializarFila(&fila);
+    inicializarPilha(&pilha);
 
-⚙️ **Funcionalidades do Sistema:**
+    int opcao;
 
-*   Implementar uma tabela hash (array de ponteiros ou lista encadeada).
-*   Função de inserção que relaciona pista → suspeito.
-*   Permitir consulta de todas as pistas relacionadas a cada suspeito.
-*   Mostrar o “suspeito mais citado” ao final da análise.
+    do {
+        exibirEstado(&fila, &pilha);
 
-📥 **Entrada** e 📤 **Saída de Dados:**
+        printf("\nAÇÕES DISPONÍVEIS:\n");
+        printf("1 - Jogar peça da frente da fila\n");
+        printf("2 - Enviar peça da fila para a pilha\n");
+        printf("3 - Usar peça da pilha\n");
+        printf("4 - Trocar peça da frente com o topo da pilha\n");
+        printf("5 - Trocar os 3 primeiros da fila com os 3 da pilha\n");
+        printf("0 - Sair\n");
+        printf("Escolha: ");
+        scanf("%d", &opcao);
 
-*   As pistas e suspeitos são armazenados via `inserirNaHash(pista, suspeito)`.
-*   O programa exibe as associações pista → suspeito.
-*   Exibe o suspeito mais citado com base nas pistas armazenadas.
+        switch (opcao) {
+            case 1: {
+                if (!filaVazia(&fila)) {
+                    removerFila(&fila);
+                    inserirFila(&fila, gerarPeca());
+                }
+                break;
+            }
 
-**Observações:**
+            case 2: {
+                if (!filaVazia(&fila) && !pilhaCheia(&pilha)) {
+                    Peca p = removerFila(&fila);
+                    push(&pilha, p);
+                    inserirFila(&fila, gerarPeca());
+                }
+                break;
+            }
 
-*   Pode utilizar hashing simples com função de espalhamento baseada em primeiros caracteres ou soma ASCII.
-*   O ideal é evitar colisões, mas, se ocorrerem, use encadeamento.
+            case 3: {
+                if (!pilhaVazia(&pilha)) pop(&pilha);
+                break;
+            }
 
----
+            case 4: {
+                if (!filaVazia(&fila) && !pilhaVazia(&pilha)) {
+                    Peca tempFila = fila.itens[fila.frente];
+                    fila.itens[fila.frente] = pilha.itens[pilha.topo];
+                    pilha.itens[pilha.topo] = tempFila;
+                }
+                break;
+            }
 
-## 🏁 Conclusão
+            case 5:
+                trocaTres(&fila, &pilha);
+                break;
 
-Ao concluir qualquer um dos níveis, você terá desenvolvido um sistema de investigação funcional em C, utilizando estruturas fundamentais como árvores e tabelas hash para controlar lógica de jogo.
+            case 0:
+                printf("Encerrando...\n");
+                break;
+        }
 
-Boa sorte, e divirta-se programando com **Detective Quest**!
+    } while (opcao != 0);
 
-Equipe de Ensino – Enigma Studios
+    return 0;
+}
